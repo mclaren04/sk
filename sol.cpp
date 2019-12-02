@@ -446,8 +446,6 @@ int main() {
       if (pid == 0)
          printf("pid0: NORM = %lf\n", get_scalars[1]);
    } while (get_scalars[1] > 0.000001);
-   printf("pid[%d]: [4][0]= %lf; [2][40]= %lf; [7][80]= %lf; [2][120]= %lf; [8][159]= %lf\n", pid, w[4][0], w[2][40], w[7][80], w[2][120], w[8][159]);
-   //MPI_Barrier(MPI_COMM_WORLD);
    MPI_Finalize();
    return 0;
 }
