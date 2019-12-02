@@ -123,7 +123,9 @@ double scalar_product(double **u, double **v) {
    for (int i = 0; i < side; i++) {
       res_aux = 0;
       for (int j = 0; j < N; j++) {
-         res_aux += rho(i, j)*u[i][j]*v[i][j];
+         if (!((pid == 0 && (i == 0 && j == 0 || i == 0 && j == N-1)) ||
+                  (pid == p_num-1 && (i == side-1 && j == 0 || i == side-1 && j == N-1))))
+            res_aux += rho(i, j)*u[i][j]*v[i][j];
       }
       res += res_aux;
    }
@@ -274,12 +276,14 @@ void send_recv(double **matr) {
       MPI_Status status;
       MPI_Isend(matr[side - 1], N, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD, &request1);
       MPI_Recv(r_buf, N, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, &status);
+      MPI_Wait(&request1, &status);
    } else if (pid == p_num - 1) {
       MPI_Status status;
       int msg1 = 2*(p_num - 1) - 1;
       int msg2 = 2*(p_num - 1) - 2;
       MPI_Isend(matr[0], N, MPI_DOUBLE, pid - 1, msg1, MPI_COMM_WORLD, &request1);
       MPI_Recv(l_buf, N, MPI_DOUBLE, pid - 1, msg2, MPI_COMM_WORLD, &status);
+      MPI_Wait(&request1, &status);
    } else {
       MPI_Status status1, status2;
       int msg1 = 2*pid - 1;
@@ -290,6 +294,8 @@ void send_recv(double **matr) {
       MPI_Isend(matr[side - 1], N, MPI_DOUBLE, pid + 1, msg2, MPI_COMM_WORLD, &request2);
       MPI_Recv(l_buf, N, MPI_DOUBLE, pid - 1, msg3, MPI_COMM_WORLD, &status1);
       MPI_Recv(r_buf, N, MPI_DOUBLE, pid + 1, msg4, MPI_COMM_WORLD, &status2);
+      MPI_Wait(&request1, &status1);
+      MPI_Wait(&request2, &status2);
    }
 }
 
@@ -439,7 +445,9 @@ int main() {
       matrix_sub(w, r);
       if (pid == 0)
          printf("pid0: NORM = %lf\n", get_scalars[1]);
-   } while (get_scalars[1] > 0.00001);
+   } while (get_scalars[1] > 0.000001);
+   printf("pid[%d]: [4][0]= %lf; [2][40]= %lf; [7][80]= %lf; [2][120]= %lf; [8][159]= %lf\n", pid, w[4][0], w[2][40], w[7][80], w[2][120], w[8][159]);
+   //MPI_Barrier(MPI_COMM_WORLD);
    MPI_Finalize();
    return 0;
 }
