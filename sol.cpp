@@ -444,8 +444,8 @@ int main() {
       // get new w
       matrix_sub(w, r);
       if (pid == 0)
-         printf("pid0: NORM = %lf\n", get_scalars[1]);
-   } while (get_scalars[1] > 0.000001);
+         printf("pid0: NORM = %.8lf\n", get_scalars[1]);
+   } while (get_scalars[1] > 0.0000004);
    MPI_Finalize();
    return 0;
 }
