@@ -1,6 +1,6 @@
+#include <mpi.h>
 #include <cmath>
 #include <iostream>
-using namespace std;
 
 // Number of points in the grid
 enum {N = 160};
@@ -111,7 +111,7 @@ double calc_psi(int i, int j) {
 double rho(int i, int j) {
    double rho1, rho2;
    rho2 = (j == 0 || j == N - 1) ? 0.5 : 1; 
-   if ((pid == 0 && i == 0) || (pid == n_pid - 1 && i == side - 1))
+   if ((pid == 0 && i == 0) || (pid == p_num - 1 && i == side - 1))
       rho1 = 0.5;
    else
       rho1 = 1;
@@ -206,9 +206,9 @@ double left_condition_left(double **mat, int j) {
 }
 
 double right_condition_left(double **mat, int j) {
-   double summand1 = (2/h1) * numeric_mlt_x(mat, N - 1, j);
-   double summand2 = complex_drv_y(mat, N - 1, j);
-   return summand1 + mat[N - 1][j] - summand2;
+   double summand1 = (2/h1) * numeric_mlt_x(mat, side - 1, j);
+   double summand2 = complex_drv_y(mat, side - 1, j);
+   return summand1 + mat[side - 1][j] - summand2;
 }
 
 // common function for calculation of the right
@@ -233,13 +233,13 @@ double corner_l_b_left(double **mat) {
 }
 
 double corner_r_b_left(double **mat) {
-   return 2 * numeric_mlt_x(mat, N - 1, 0) / h1 -
-      2 * numeric_mlt_y(mat, N - 1, 1) / h2 + mat[N - 1][0];
+   return 2 * numeric_mlt_x(mat, side - 1, 0) / h1 -
+      2 * numeric_mlt_y(mat, side - 1, 1) / h2 + mat[side - 1][0];
 }
 
 double corner_r_t_left(double **mat) {
-   return 2 * numeric_mlt_x(mat, N - 1, N - 1) / h1 +
-      2 * numeric_mlt_y(mat, N - 1, N - 1) / h2 + mat[N - 1][N - 1];
+   return 2 * numeric_mlt_x(mat, side - 1, N - 1) / h1 +
+      2 * numeric_mlt_y(mat, side - 1, N - 1) / h2 + mat[side - 1][N - 1];
 }
 
 double corner_l_t_left(double **mat) {
@@ -274,10 +274,10 @@ void send_recv(double **matr) {
       MPI_Status status;
       MPI_Isend(matr[side - 1], N, MPI_DOUBLE, 1, 0, MPI_COMM_WORLD, &request1);
       MPI_Recv(r_buf, N, MPI_DOUBLE, 1, 1, MPI_COMM_WORLD, &status);
-   } else if (pid == n_pid - 1) {
+   } else if (pid == p_num - 1) {
       MPI_Status status;
-      int msg1 = 2*(n_pid - 1) - 1;
-      int msg2 = 2*(n_pid - 1) - 2;
+      int msg1 = 2*(p_num - 1) - 1;
+      int msg2 = 2*(p_num - 1) - 2;
       MPI_Isend(matr[0], N, MPI_DOUBLE, pid - 1, msg1, MPI_COMM_WORLD, &request1);
       MPI_Recv(l_buf, N, MPI_DOUBLE, pid - 1, msg2, MPI_COMM_WORLD, &status);
    } else {
@@ -296,7 +296,7 @@ void send_recv(double **matr) {
 // multiply A matrix by mat matrix
 void calculate_Amat(double **res, double **mat) {
    send_recv(mat);
-   for (int j = 1; i < N - 1; i++) {
+   for (int j = 1; j < N - 1; j++) {
       if (pid == 0)
          for (int i = 1; i < side; i++)
             res[i][j] = -delta(mat, i, j) + mat[i][j];
@@ -329,7 +329,7 @@ void calculate_Amat(double **res, double **mat) {
 
 // calculate the right part of the numeric task
 void calculate_B(double **res) {
-   for (int j = 0; i < N - 1; i++) {
+   for (int j = 0; j < N - 1; j++) {
       if (pid == 0)
          for (int i = 1; i < side; i++)
             res[i][j] = F[i][j];
@@ -393,13 +393,13 @@ void init() {
    }
    if (pid == 0) {
       for (int j = 0; j < N; j++)
-         psi_l[j] = calc_psi(0, j)
+         psi_l[j] = calc_psi(0, j);
       psi_b[0] = psi_l[0] = (psi_b[1] + psi_l[1]) / 2;
       psi_t[0] = psi_l[N - 1] = (psi_t[1] + psi_l[N-2]) / 2;
    }
    if (pid == p_num - 1) {
       for (int j = 0; j < N; j++)
-         psi_r[j] = calc_psi(N - 1, j)
+         psi_r[j] = calc_psi(N - 1, j);
       psi_b[N - 1] = psi_r[0] = (psi_b[N-2] + psi_r[1]) / 2;
       psi_t[N - 1] = psi_r[N - 1] = (psi_t[N-2] + psi_r[N-2]) / 2;
    }
@@ -410,13 +410,11 @@ int main() {
    // allocate and initialize all the input matrices
    double tau;
    MPI_Init(NULL, NULL);
-   MPI_Comm_size(MPI_COMM_WORLD, &world);
+   MPI_Comm_size(MPI_COMM_WORLD, &p_num);
    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
-   p_num = world;
-   side = N / world;
+   side = N / p_num;
    anchor = side * pid;
-   init()
-
+   init();
    // main cycle
    do {
       MPI_Barrier(MPI_COMM_WORLD);
