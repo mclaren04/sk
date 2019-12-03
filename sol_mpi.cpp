@@ -4,7 +4,6 @@
 
 // Number of points in the grid
 enum {N = 160};
-enum direction {x_dir, y_dir};
 
 // Initial task: -delta(u(x, y)) + q(x, y)*u(x, y) = F(x, y)
 // where x, y belongs to square that has a (A1, B1) point as left down corner
@@ -414,7 +413,6 @@ void init() {
 
 int main() {
    // allocate and initialize all the input matrices
-   double tau;
    MPI_Init(NULL, NULL);
    MPI_Comm_size(MPI_COMM_WORLD, &p_num);
    MPI_Comm_rank(MPI_COMM_WORLD, &pid);
@@ -443,9 +441,9 @@ int main() {
       matrix_mult_by_scalar(r, get_scalars[0]);
       // get new w
       matrix_sub(w, r);
-      if (pid == 0)
-         printf("pid0: NORM = %.8lf\n", get_scalars[1]);
-   } while (get_scalars[1] > 0.0000004);
+ //     if (pid == 0)
+   //      printf("pid0: NORM = %.8lf\n", get_scalars[1]);
+   } while (get_scalars[1] > 0.000001);
    MPI_Finalize();
    return 0;
 }
